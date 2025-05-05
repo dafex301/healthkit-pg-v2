@@ -15,6 +15,14 @@ struct ContentView: View {
                     StatRowView(title: "Distance", value: "\(String(format: "%.2f", healthManager.distance)) km", icon: "figure.walk")
                 }
                 
+                Section(header: Text("Today's Sleep")) {
+                    StatRowView(title: "Total Sleep", value: String(format: "%.1f h", healthManager.totalSleepMinutes/60), icon: "bed.double.fill")
+                    StatRowView(title: "REM", value: String(format: "%.0f min", healthManager.remSleepMinutes), icon: "moon.zzz.fill")
+                    StatRowView(title: "Deep", value: String(format: "%.0f min", healthManager.deepSleepMinutes), icon: "tortoise.fill")
+                    StatRowView(title: "Core", value: String(format: "%.0f min", healthManager.coreSleepMinutes), icon: "circle.grid.cross")
+                    StatRowView(title: "Awake", value: String(format: "%.0f min", healthManager.awakeMinutes), icon: "eye.fill")
+                }
+                
                 Section(header: Text("Profile")) {
                     StatRowView(title: "Weight", value: "\(String(format: "%.1f", healthManager.weight)) kg", icon: "scalemass.fill")
                     StatRowView(title: "Height", value: "\(String(format: "%.1f", healthManager.height)) cm", icon: "ruler.fill")

@@ -21,6 +21,11 @@ class HealthKitManager: ObservableObject {
     @Published var age: Int = 0
     @Published var biologicalSex: String = "Unknown"
     @Published var workouts: [WorkoutData] = []
+    @Published var totalSleepMinutes: Double = 0
+    @Published var remSleepMinutes: Double = 0
+    @Published var deepSleepMinutes: Double = 0
+    @Published var coreSleepMinutes: Double = 0
+    @Published var awakeMinutes: Double = 0
     
     init() {
         if HKHealthStore.isHealthDataAvailable() {
@@ -80,6 +85,7 @@ class HealthKitManager: ObservableObject {
         readHeight()
         getBiologicalSexAndAge()
         queryWorkouts()
+        readSleepData()
     }
     
     // MARK: - Reading Health Data
@@ -363,6 +369,64 @@ class HealthKitManager: ObservableObject {
             }
         }
         
+        healthStore.execute(query)
+    }
+    
+    // MARK: - Sleep Data
+    func readSleepData() {
+        guard let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) else { return }
+        let now = Date()
+        let startOfDay = Calendar.current.startOfDay(for: now)
+        let predicate = HKQuery.predicateForSamples(withStart: startOfDay, end: now, options: .strictStartDate)
+        let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
+        let query = HKSampleQuery(sampleType: sleepType, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: [sortDescriptor]) { [weak self] (_, samples, error) in
+            guard let samples = samples as? [HKCategorySample], error == nil else {
+                print("Failed to fetch sleep data: \(error?.localizedDescription ?? "Unknown error")")
+                return
+            }
+            var total: Double = 0
+            var rem: Double = 0
+            var deep: Double = 0
+            var core: Double = 0
+            var awake: Double = 0
+            for sample in samples {
+                let minutes = sample.endDate.timeIntervalSince(sample.startDate) / 60
+                switch sample.value {
+                case HKCategoryValueSleepAnalysis.asleepREM.rawValue:
+                    rem += minutes
+                case HKCategoryValueSleepAnalysis.asleepDeep.rawValue:
+                    deep += minutes
+                case HKCategoryValueSleepAnalysis.asleepCore.rawValue:
+                    core += minutes
+                case HKCategoryValueSleepAnalysis.awake.rawValue:
+                    awake += minutes
+                case HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue:
+                    total += minutes
+                default:
+                    break
+                }
+                // For iOS < 16, all sleep is .asleep
+                if #available(iOS 16.0, *) {
+                    // already handled above
+                } else {
+                    if sample.value == HKCategoryValueSleepAnalysis.asleep.rawValue {
+                        total += minutes
+                    }
+                }
+            }
+            // If iOS 16+, total = rem+deep+core
+            if #available(iOS 16.0, *) {
+                total = rem + deep + core
+            }
+            DispatchQueue.main.async {
+                self?.totalSleepMinutes = total
+                self?.remSleepMinutes = rem
+                self?.deepSleepMinutes = deep
+                self?.coreSleepMinutes = core
+                self?.awakeMinutes = awake
+                print("Today's sleep: total=\(total) min, rem=\(rem), deep=\(deep), core=\(core), awake=\(awake)")
+            }
+        }
         healthStore.execute(query)
     }
 }
