@@ -1,24 +1,49 @@
-//
-//  ContentView.swift
-//  healthkit-pg-v2
-//
-//  Created by Fahrel Gibran on 05/05/25.
-//
-
+// ContentView.swift
 import SwiftUI
+import HealthKit
 
 struct ContentView: View {
+    @StateObject var healthManager = HealthKitManager()
+    
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        NavigationView {
+            List {
+                Section(header: Text("Today's Stats")) {
+                    StatRowView(title: "Steps", value: "\(healthManager.stepCount)", icon: "figure.walk")
+                    StatRowView(title: "Active Energy", value: "\(Int(healthManager.activeEnergy)) kcal", icon: "flame.fill")
+                    StatRowView(title: "Heart Rate", value: "\(Int(healthManager.heartRate)) bpm", icon: "heart.fill")
+                    StatRowView(title: "Distance", value: "\(String(format: "%.2f", healthManager.distance)) km", icon: "figure.walk")
+                }
+                
+                Section(header: Text("Profile")) {
+                    StatRowView(title: "Weight", value: "\(String(format: "%.1f", healthManager.weight)) kg", icon: "scalemass.fill")
+                    StatRowView(title: "Height", value: "\(String(format: "%.1f", healthManager.height)) cm", icon: "ruler.fill")
+                    StatRowView(title: "Age", value: "\(healthManager.age) years", icon: "calendar")
+                    StatRowView(title: "Biological Sex", value: healthManager.biologicalSex, icon: "person.fill")
+                }
+                
+                Section(header: Text("Last 7 Days Workouts")) {
+                    ForEach(healthManager.workouts, id: \.id) { workout in
+                        NavigationLink(destination: WorkoutDetailView(workout: workout)) {
+                            WorkoutRowView(workout: workout)
+                        }
+                    }
+                }
+                
+                Section {
+                    Button("Refresh Data") {
+                        healthManager.fetchAllHealthData()
+                    }
+                    
+                    Button("Save New Weight: 70kg") {
+                        healthManager.saveNewWeight(weight: 70.0)
+                    }
+                }
+            }
+            .navigationTitle("HealthKit Demo")
+            .onAppear {
+                healthManager.requestAuthorization()
+            }
         }
-        .padding()
     }
-}
-
-#Preview {
-    ContentView()
 }
