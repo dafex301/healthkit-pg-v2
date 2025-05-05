@@ -77,28 +77,28 @@ class HealthKitManager: ObservableObject {
     }
     
     func fetchAllHealthData() {
-        readStepCount()
-        readActiveEnergy()
-        readLatestHeartRate()
-        readDistance()
+        fetchAllHealthData(for: Date())
+    }
+    
+    func fetchAllHealthData(for date: Date) {
+        readStepCount(for: date)
+        readActiveEnergy(for: date)
+        readLatestHeartRate(for: date)
+        readDistance(for: date)
         readWeight()
         readHeight()
         getBiologicalSexAndAge()
-        queryWorkouts()
-        readSleepData()
+        queryWorkouts(for: date)
+        readSleepData(for: date)
     }
     
     // MARK: - Reading Health Data
     
-    func readStepCount() {
+    func readStepCount(for date: Date) {
         guard let stepCountType = HKQuantityType.quantityType(forIdentifier: .stepCount) else { return }
-        
-        // Create predicate for today's date
-        let now = Date()
-        let startOfDay = Calendar.current.startOfDay(for: now)
-        let predicate = HKQuery.predicateForSamples(withStart: startOfDay, end: now, options: .strictStartDate)
-        
-        // Create a query to sum up all step counts for today
+        let startOfDay = Calendar.current.startOfDay(for: date)
+        let endOfDay = Calendar.current.date(byAdding: .day, value: 1, to: startOfDay) ?? Date()
+        let predicate = HKQuery.predicateForSamples(withStart: startOfDay, end: endOfDay, options: .strictStartDate)
         let query = HKStatisticsQuery(quantityType: stepCountType,
                                      quantitySamplePredicate: predicate,
                                      options: .cumulativeSum) { [weak self] (_, result, error) in
@@ -106,26 +106,19 @@ class HealthKitManager: ObservableObject {
                 print("Failed to fetch step count: \(error?.localizedDescription ?? "Unknown error")")
                 return
             }
-            
-            // Process the result on the main thread
             DispatchQueue.main.async {
                 self?.stepCount = Int(sum.doubleValue(for: HKUnit.count()))
-                print("Today's step count: \(self?.stepCount ?? 0) steps")
+                print("Step count: \(self?.stepCount ?? 0) steps")
             }
         }
-        
         healthStore.execute(query)
     }
     
-    func readActiveEnergy() {
+    func readActiveEnergy(for date: Date) {
         guard let activeEnergyType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned) else { return }
-        
-        // Create predicate for today's date
-        let now = Date()
-        let startOfDay = Calendar.current.startOfDay(for: now)
-        let predicate = HKQuery.predicateForSamples(withStart: startOfDay, end: now, options: .strictStartDate)
-        
-        // Create a query to sum up all active energy for today
+        let startOfDay = Calendar.current.startOfDay(for: date)
+        let endOfDay = Calendar.current.date(byAdding: .day, value: 1, to: startOfDay) ?? Date()
+        let predicate = HKQuery.predicateForSamples(withStart: startOfDay, end: endOfDay, options: .strictStartDate)
         let query = HKStatisticsQuery(quantityType: activeEnergyType,
                                      quantitySamplePredicate: predicate,
                                      options: .cumulativeSum) { [weak self] (_, result, error) in
@@ -133,26 +126,22 @@ class HealthKitManager: ObservableObject {
                 print("Failed to fetch active energy: \(error?.localizedDescription ?? "Unknown error")")
                 return
             }
-            
-            // Process the result on the main thread
             DispatchQueue.main.async {
                 self?.activeEnergy = sum.doubleValue(for: HKUnit.kilocalorie())
-                print("Today's active energy: \(self?.activeEnergy ?? 0) kcal")
+                print("Active energy: \(self?.activeEnergy ?? 0) kcal")
             }
         }
-        
         healthStore.execute(query)
     }
     
-    func readLatestHeartRate() {
+    func readLatestHeartRate(for date: Date) {
         guard let heartRateType = HKQuantityType.quantityType(forIdentifier: .heartRate) else { return }
-        
-        // Sort by date to get the latest heart rate reading
+        let startOfDay = Calendar.current.startOfDay(for: date)
+        let endOfDay = Calendar.current.date(byAdding: .day, value: 1, to: startOfDay) ?? Date()
+        let predicate = HKQuery.predicateForSamples(withStart: startOfDay, end: endOfDay, options: .strictStartDate)
         let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
-        
-        // Query to fetch the latest heart rate sample
         let query = HKSampleQuery(sampleType: heartRateType,
-                                 predicate: nil,
+                                 predicate: predicate,
                                  limit: 1,
                                  sortDescriptors: [sortDescriptor]) { [weak self] (_, samples, error) in
             guard let samples = samples,
@@ -160,27 +149,20 @@ class HealthKitManager: ObservableObject {
                 print("Failed to fetch heart rate: \(error?.localizedDescription ?? "Unknown error")")
                 return
             }
-            
-            // Process the result on the main thread
             DispatchQueue.main.async {
                 let heartRateUnit = HKUnit.count().unitDivided(by: HKUnit.minute())
                 self?.heartRate = mostRecentSample.quantity.doubleValue(for: heartRateUnit)
                 print("Latest heart rate: \(self?.heartRate ?? 0) bpm")
             }
         }
-        
         healthStore.execute(query)
     }
     
-    func readDistance() {
+    func readDistance(for date: Date) {
         guard let distanceType = HKQuantityType.quantityType(forIdentifier: .distanceWalkingRunning) else { return }
-        
-        // Create predicate for today's date
-        let now = Date()
-        let startOfDay = Calendar.current.startOfDay(for: now)
-        let predicate = HKQuery.predicateForSamples(withStart: startOfDay, end: now, options: .strictStartDate)
-        
-        // Create a query to sum up all distance for today
+        let startOfDay = Calendar.current.startOfDay(for: date)
+        let endOfDay = Calendar.current.date(byAdding: .day, value: 1, to: startOfDay) ?? Date()
+        let predicate = HKQuery.predicateForSamples(withStart: startOfDay, end: endOfDay, options: .strictStartDate)
         let query = HKStatisticsQuery(quantityType: distanceType,
                                      quantitySamplePredicate: predicate,
                                      options: .cumulativeSum) { [weak self] (_, result, error) in
@@ -188,15 +170,11 @@ class HealthKitManager: ObservableObject {
                 print("Failed to fetch distance: \(error?.localizedDescription ?? "Unknown error")")
                 return
             }
-            
-            // Process the result on the main thread
             DispatchQueue.main.async {
-                // Convert from meters to kilometers
                 self?.distance = sum.doubleValue(for: HKUnit.meter()) / 1000
-                print("Today's distance: \(self?.distance ?? 0) km")
+                print("Distance: \(self?.distance ?? 0) km")
             }
         }
-        
         healthStore.execute(query)
     }
     
@@ -333,14 +311,11 @@ class HealthKitManager: ObservableObject {
     
     // MARK: - Querying Workouts
     
-    func queryWorkouts() {
-        // Predicate for the last 7 days
-        let calendar = Calendar.current
-        let now = Date()
-        guard let oneWeekAgo = calendar.date(byAdding: .day, value: -7, to: now) else { return }
-        let predicate = HKQuery.predicateForSamples(withStart: oneWeekAgo, end: now, options: .strictStartDate)
-        
-        // Query all workouts from the last 7 days
+    func queryWorkouts(for date: Date) {
+//        let calendar = Calendar.current
+        let startOfDay = Calendar.current.startOfDay(for: date)
+        let endOfDay = Calendar.current.date(byAdding: .day, value: 1, to: startOfDay) ?? Date()
+        let predicate = HKQuery.predicateForSamples(withStart: startOfDay, end: endOfDay, options: .strictStartDate)
         let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
         let query = HKSampleQuery(sampleType: HKObjectType.workoutType(),
                                  predicate: predicate,
@@ -350,34 +325,28 @@ class HealthKitManager: ObservableObject {
                 print("Failed to fetch workouts: \(error?.localizedDescription ?? "Unknown error")")
                 return
             }
-            
             DispatchQueue.main.async {
-                // Convert HKWorkout to our WorkoutData model
                 self?.workouts = workouts.map { workout in
                     return WorkoutData(
                         id: workout.uuid,
                         type: workout.workoutActivityType.rawValue.description,
-//                        duration: workout.,
-//                        calories: workout.totalEnergyBurned?.doubleValue(for: HKUnit.kilocalorie()) ?? 0,
                         distance: workout.totalDistance?.doubleValue(for: HKUnit.meter()) ?? 0,
                         startDate: workout.startDate,
                         endDate: workout.endDate
                     )
                 }
-                
-                print("Found \(workouts.count) workouts in the last 7 days")
+                print("Found \(workouts.count) workouts for selected date")
             }
         }
-        
         healthStore.execute(query)
     }
     
     // MARK: - Sleep Data
-    func readSleepData() {
+    func readSleepData(for date: Date) {
         guard let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) else { return }
-        let now = Date()
-        let startOfDay = Calendar.current.startOfDay(for: now)
-        let predicate = HKQuery.predicateForSamples(withStart: startOfDay, end: now, options: .strictStartDate)
+        let startOfDay = Calendar.current.startOfDay(for: date)
+        let endOfDay = Calendar.current.date(byAdding: .day, value: 1, to: startOfDay) ?? Date()
+        let predicate = HKQuery.predicateForSamples(withStart: startOfDay, end: endOfDay, options: .strictStartDate)
         let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
         let query = HKSampleQuery(sampleType: sleepType, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: [sortDescriptor]) { [weak self] (_, samples, error) in
             guard let samples = samples as? [HKCategorySample], error == nil else {
@@ -405,16 +374,13 @@ class HealthKitManager: ObservableObject {
                 default:
                     break
                 }
-                // For iOS < 16, all sleep is .asleep
                 if #available(iOS 16.0, *) {
-                    // already handled above
                 } else {
-                    if sample.value == HKCategoryValueSleepAnalysis.asleep.rawValue {
+                    if sample.value == HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue {
                         total += minutes
                     }
                 }
             }
-            // If iOS 16+, total = rem+deep+core
             if #available(iOS 16.0, *) {
                 total = rem + deep + core
             }
@@ -424,9 +390,33 @@ class HealthKitManager: ObservableObject {
                 self?.deepSleepMinutes = deep
                 self?.coreSleepMinutes = core
                 self?.awakeMinutes = awake
-                print("Today's sleep: total=\(total) min, rem=\(rem), deep=\(deep), core=\(core), awake=\(awake)")
+                print("Sleep: total=\(total) min, rem=\(rem), deep=\(deep), core=\(core), awake=\(awake)")
             }
         }
         healthStore.execute(query)
+    }
+    
+    func readStepCount() {
+        readStepCount(for: Date())
+    }
+    
+    func readActiveEnergy() {
+        readActiveEnergy(for: Date())
+    }
+    
+    func readLatestHeartRate() {
+        readLatestHeartRate(for: Date())
+    }
+    
+    func readDistance() {
+        readDistance(for: Date())
+    }
+    
+    func readSleepData() {
+        readSleepData(for: Date())
+    }
+    
+    func queryWorkouts() {
+        queryWorkouts(for: Date())
     }
 }
