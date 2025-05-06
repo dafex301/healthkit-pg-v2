@@ -8,6 +8,7 @@ struct TamagotchiWidget: View {
     @State private var avatarScale: CGFloat = 1.0
     @State private var didDowngrade: Bool = false
     @State private var showDatePicker: Bool = false
+    @State private var showInfoSheet: Bool = false
     @State private var avatarShake: CGFloat = 0
     @State private var tempDate: Date = Calendar.current.startOfDay(for: Date())
     
@@ -34,6 +35,15 @@ struct TamagotchiWidget: View {
                 ZStack(alignment: .topLeading) {
                     Color.clear.frame(height: 44) // Spacer for status bar
                     HStack {
+                        Button(action: { showInfoSheet = true }) {
+                            Image(systemName: "info.circle")
+                                .font(.title2)
+                                .foregroundStyle(.white.opacity(0.85))
+                                .padding(12)
+                                .background(Color.black.opacity(0.001)) // hit area
+                                .clipShape(Circle())
+                        }
+                        .accessibilityLabel("Show Tamagotchi States Info")
                         Spacer()
                         Button(action: { tempDate = selectedDate; showDatePicker = true }) {
                             Image(systemName: "calendar")
@@ -44,9 +54,8 @@ struct TamagotchiWidget: View {
                                 .clipShape(Circle())
                         }
                         .accessibilityLabel("Select Date")
-                        
                     }
-                    .padding(.leading, 8)
+                    .padding(.horizontal, 8)
                     .padding(.top, 2)
                 }
                 ZStack {
@@ -129,6 +138,9 @@ struct TamagotchiWidget: View {
             }
             .presentationDetents([.medium, .large])
         }
+        .sheet(isPresented: $showInfoSheet) {
+            TamagotchiStatesInfoSheet()
+        }
     }
 }
 
@@ -176,5 +188,35 @@ struct BadgeView: View {
             .padding(6)
             .background(Capsule().fill(color.opacity(0.15)))
             .foregroundStyle(color)
+    }
+}
+
+struct TamagotchiStatesInfoSheet: View {
+    var body: some View {
+        NavigationView {
+            List(TamagotchiState.allCases) { state in
+                HStack(alignment: .top, spacing: 16) {
+                    Image(state.assetName)
+                        .resizable()
+                        .frame(width: 48, height: 48)
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text(state.leadEmoji)
+                            Text(state.accessibilityDescription)
+                                .font(.headline)
+                        }
+                        Text(state.gamifiedDescription)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        Text(state.targetText)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .padding(.vertical, 8)
+            }
+            .navigationTitle("Tamagotchi States")
+            .navigationBarTitleDisplayMode(.inline)
+        }
     }
 }
