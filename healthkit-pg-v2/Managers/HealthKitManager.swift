@@ -438,9 +438,10 @@ class HealthKitManager: ObservableObject {
         queryWorkouts(for: Date())
     }
     
-    /// Fetches a HealthSnapshot for today, asynchronously.
-    /// - Returns: A HealthSnapshot with today's metrics.
-    func fetchTodaySnapshot() async throws -> HealthSnapshot {
+    /// Fetches a HealthSnapshot for the given date, asynchronously.
+    /// - Parameter date: The date for which to fetch the snapshot.
+    /// - Returns: A HealthSnapshot with the metrics for the given date.
+    func fetchSnapshot(for date: Date) async throws -> HealthSnapshot {
         // Helper to run HK queries synchronously
         func fetch<T>(_ block: (@escaping (T) -> Void) -> Void) async -> T? {
             await withCheckedContinuation { continuation in
@@ -449,9 +450,8 @@ class HealthKitManager: ObservableObject {
                 }
             }
         }
-        let today = Date()
-        let startOfDay = Calendar.current.startOfDay(for: today)
-        let endOfDay = Calendar.current.date(byAdding: .day, value: 1, to: startOfDay) ?? today
+        let startOfDay = Calendar.current.startOfDay(for: date)
+        let endOfDay = Calendar.current.date(byAdding: .day, value: 1, to: startOfDay) ?? date
         // Step Count
         let steps: Int = await fetch { completion in
             guard let stepCountType = HKQuantityType.quantityType(forIdentifier: .stepCount) else { completion(0); return }
@@ -486,8 +486,8 @@ class HealthKitManager: ObservableObject {
         let (totalSleep, deepSleep): (Double, Double) = await fetch { completion in
             guard let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) else { completion((0,0)); return }
             let calendar = Calendar.current
-            let startOfMainSleep = calendar.date(bySettingHour: 18, minute: 0, second: 0, of: calendar.date(byAdding: .day, value: -1, to: today)!)!
-            let endOfMainSleep = calendar.date(bySettingHour: 10, minute: 0, second: 0, of: today)!
+            let startOfMainSleep = calendar.date(bySettingHour: 18, minute: 0, second: 0, of: calendar.date(byAdding: .day, value: -1, to: date)!)!
+            let endOfMainSleep = calendar.date(bySettingHour: 10, minute: 0, second: 0, of: date)!
             let predicate = HKQuery.predicateForSamples(withStart: startOfMainSleep, end: endOfMainSleep, options: .strictStartDate)
             let query = HKSampleQuery(sampleType: sleepType, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, _ in
                 var total: Double = 0
@@ -507,7 +507,7 @@ class HealthKitManager: ObservableObject {
             }
             self.healthStore.execute(query)
         } ?? (0,0)
-        // Resting HR (use lowest HR sample for today as a proxy)
+        // Resting HR (use lowest HR sample for the day as a proxy)
         let restingHR: Double = await fetch { completion in
             guard let heartRateType = HKQuantityType.quantityType(forIdentifier: .heartRate) else { completion(0); return }
             let predicate = HKQuery.predicateForSamples(withStart: startOfDay, end: endOfDay, options: .strictStartDate)

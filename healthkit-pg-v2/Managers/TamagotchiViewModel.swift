@@ -9,35 +9,24 @@ class TamagotchiViewModel: ObservableObject {
     @Published var currentState: TamagotchiState
     /// The asset name for the current avatar image.
     @Published var assetName: String
+    /// The selected date for which to show the Tamagotchi state.
+    @Published var selectedDate: Date {
+        didSet {
+            Task { await fetchSnapshot(for: selectedDate) }
+        }
+    }
     
     private let healthKitManager: HealthKitManager
     private var cancellables = Set<AnyCancellable>()
     
-    // Use static computed properties for AppStorage access
-    private static var cachedStateRawValue: String {
-        get { UserDefaults.standard.string(forKey: "tamagotchiStateRawValue") ?? TamagotchiState.knockedOutSleepy.rawValue }
-        set { UserDefaults.standard.set(newValue, forKey: "tamagotchiStateRawValue") }
-    }
-    private static var cachedDateISO: String {
-        get { UserDefaults.standard.string(forKey: "tamagotchiStateDateISO") ?? "" }
-        set { UserDefaults.standard.set(newValue, forKey: "tamagotchiStateDateISO") }
-    }
-    
     /// Initializes the view model and subscribes to HealthKitManager.
-    init(healthKitManager: HealthKitManager = HealthKitManager()) {
+    init(healthKitManager: HealthKitManager = HealthKitManager(), initialDate: Date = Calendar.current.startOfDay(for: Date())) {
         self.healthKitManager = healthKitManager
-        let todayISO = Self.todayISOString
-        let initialState: TamagotchiState
-        let cachedState = Self.cachedStateRawValue
-        let cachedDate = Self.cachedDateISO
-        if let cached = TamagotchiState(rawValue: cachedState), cachedDate == todayISO {
-            initialState = cached
-        } else {
-            initialState = .knockedOutSleepy
-        }
-        self.currentState = initialState
-        self.assetName = initialState.assetName
+        self.selectedDate = initialDate
+        self.currentState = .knockedOutSleepy
+        self.assetName = TamagotchiState.knockedOutSleepy.assetName
         subscribe()
+        Task { await fetchSnapshot(for: selectedDate) }
     }
     
     /// Subscribes to HealthKitManager's snapshotPublisher.
@@ -50,37 +39,19 @@ class TamagotchiViewModel: ObservableObject {
             .store(in: &cancellables)
     }
     
-    /// Handles a new HealthSnapshot and updates state if allowed by caching rule.
+    /// Handles a new HealthSnapshot and updates state.
     private func handle(snapshot: HealthSnapshot) {
         let newState = evaluate(snapshot)
-        let todayISO = Self.todayISOString
-        let cachedRank = TamagotchiState(rawValue: Self.cachedStateRawValue)?.severityRank ?? 0
-        if Self.cachedDateISO != todayISO || newState.severityRank < cachedRank {
-            // Allow update if new day or less severe
-            currentState = newState
-            assetName = newState.assetName
-            Self.cachedStateRawValue = newState.rawValue
-            Self.cachedDateISO = todayISO
-        } else {
-            // Keep cached state
-            currentState = TamagotchiState(rawValue: Self.cachedStateRawValue) ?? .knockedOutSleepy
-            assetName = currentState.assetName
-        }
+        currentState = newState
+        assetName = newState.assetName
     }
     
-    /// Triggers a refresh of the Tamagotchi state.
-    func refresh() async {
+    /// Fetches a snapshot for the given date and updates state.
+    private func fetchSnapshot(for date: Date) async {
         do {
-            _ = try await healthKitManager.fetchTodaySnapshot()
+            _ = try await healthKitManager.fetchSnapshot(for: date)
         } catch {
             // Optionally handle error
         }
-    }
-    
-    /// Returns today's ISO8601 date string (yyyy-MM-dd).
-    private static var todayISOString: String {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withFullDate]
-        return formatter.string(from: Date())
     }
 } 
