@@ -5,13 +5,24 @@ import HealthKit
 struct ContentView: View {
     @StateObject var healthManager = HealthKitManager()
     @State private var selectedDate = Calendar.current.startOfDay(for: Date())
+    @State private var currentSnapshot: HealthSnapshot? = nil
+    @State private var isLoadingSnapshot = false
     
     var body: some View {
         TabView {
             // Tamagotchi Tab
             NavigationView {
                 VStack {
-                    TamagotchiWidget(date: selectedDate)
+                    if let snapshot = currentSnapshot {
+                        TamagotchiWidget(snapshot: snapshot)
+                    } else if isLoadingSnapshot {
+                        ProgressView("Loading your Tamagotchi...")
+                            .padding(.top, 40)
+                    } else {
+                        Text("No data for this date.")
+                            .foregroundStyle(.secondary)
+                            .padding(.top, 40)
+                    }
                     DatePicker("Select Date", selection: $selectedDate, displayedComponents: .date)
                         .datePickerStyle(.compact)
                         .padding([.top, .horizontal])
@@ -75,9 +86,29 @@ struct ContentView: View {
         }
         .onAppear {
             healthManager.requestAuthorization()
+            loadSnapshot(for: selectedDate)
         }
         .onChange(of: selectedDate) { oldValue, newValue in
             healthManager.fetchAllHealthData(for: newValue)
+            loadSnapshot(for: newValue)
+        }
+    }
+    
+    private func loadSnapshot(for date: Date) {
+        isLoadingSnapshot = true
+        Task {
+            do {
+                let snapshot = try await healthManager.fetchSnapshot(for: date)
+                await MainActor.run {
+                    self.currentSnapshot = snapshot
+                    self.isLoadingSnapshot = false
+                }
+            } catch {
+                await MainActor.run {
+                    self.currentSnapshot = nil
+                    self.isLoadingSnapshot = false
+                }
+            }
         }
     }
 }
