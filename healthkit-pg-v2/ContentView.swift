@@ -81,6 +81,10 @@ struct ContentView: View {
                 Label("Details", systemImage: "list.bullet.rectangle")
             }
         }
+        // Set the active tab item color to white
+        .accentColor(.white)
+        // Apply our custom tab bar appearance
+//        .customTabBarAppearance()
         .onAppear {
             healthManager.requestAuthorization()
             loadSnapshot(for: selectedDate)
