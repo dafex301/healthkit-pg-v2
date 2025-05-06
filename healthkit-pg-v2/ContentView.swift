@@ -26,6 +26,7 @@ struct ContentView: View {
                         StatRowView(title: "Deep", value: String(format: "%.0f min", healthManager.deepSleepMinutes), icon: "tortoise.fill")
                         StatRowView(title: "Core", value: String(format: "%.0f min", healthManager.coreSleepMinutes), icon: "circle.grid.cross")
                         StatRowView(title: "Awake", value: String(format: "%.0f min", healthManager.awakeMinutes), icon: "eye.fill")
+                        StatRowView(title: "Nap", value: String(format: "%.0f min", healthManager.napSleepMinutes), icon: "bed.double.fill")
                     }
                     
                     Section(header: Text("Profile")) {

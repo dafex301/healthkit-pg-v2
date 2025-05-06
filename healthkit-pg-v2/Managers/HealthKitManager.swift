@@ -26,6 +26,7 @@ class HealthKitManager: ObservableObject {
     @Published var deepSleepMinutes: Double = 0
     @Published var coreSleepMinutes: Double = 0
     @Published var awakeMinutes: Double = 0
+    @Published var napSleepMinutes: Double = 0
     
     init() {
         if HKHealthStore.isHealthDataAvailable() {
@@ -344,22 +345,42 @@ class HealthKitManager: ObservableObject {
     // MARK: - Sleep Data
     func readSleepData(for date: Date) {
         guard let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) else { return }
-        let startOfDay = Calendar.current.startOfDay(for: date)
-        let endOfDay = Calendar.current.date(byAdding: .day, value: 1, to: startOfDay) ?? Date()
-        let predicate = HKQuery.predicateForSamples(withStart: startOfDay, end: endOfDay, options: .strictStartDate)
+        let calendar = Calendar.current
+        // Define main sleep window: 6 PM previous day to 10 AM current day
+        let startOfMainSleep = calendar.date(bySettingHour: 18, minute: 0, second: 0, of: calendar.date(byAdding: .day, value: -1, to: date)!)!
+        let endOfMainSleep = calendar.date(bySettingHour: 10, minute: 0, second: 0, of: date)!
+        // For nap detection, also fetch up to 6 PM current day
+        let endOfNapWindow = calendar.date(bySettingHour: 18, minute: 0, second: 0, of: date)!
+        // Query all sleep samples from 6 PM previous day to 6 PM current day
+        let predicate = HKQuery.predicateForSamples(withStart: startOfMainSleep, end: endOfNapWindow, options: .strictStartDate)
         let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
         let query = HKSampleQuery(sampleType: sleepType, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: [sortDescriptor]) { [weak self] (_, samples, error) in
             guard let samples = samples as? [HKCategorySample], error == nil else {
                 print("Failed to fetch sleep data: \(error?.localizedDescription ?? "Unknown error")")
                 return
             }
-            var total: Double = 0
             var rem: Double = 0
             var deep: Double = 0
             var core: Double = 0
             var awake: Double = 0
+            var unspecified: Double = 0
+            var napMinutes: Double = 0
+            var mainSleepMinutes: Double = 0
             for sample in samples {
                 let minutes = sample.endDate.timeIntervalSince(sample.startDate) / 60
+                let start = sample.startDate
+                // Only count REM, Deep, Core for sleep
+                let isSleep = sample.value == HKCategoryValueSleepAnalysis.asleepREM.rawValue ||
+                              sample.value == HKCategoryValueSleepAnalysis.asleepDeep.rawValue ||
+                              sample.value == HKCategoryValueSleepAnalysis.asleepCore.rawValue
+                if isSleep {
+                    // Classify as main sleep or nap
+                    if start >= startOfMainSleep && start < endOfMainSleep {
+                        mainSleepMinutes += minutes
+                    } else if start >= endOfMainSleep && start < endOfNapWindow {
+                        napMinutes += minutes
+                    }
+                }
                 switch sample.value {
                 case HKCategoryValueSleepAnalysis.asleepREM.rawValue:
                     rem += minutes
@@ -370,27 +391,20 @@ class HealthKitManager: ObservableObject {
                 case HKCategoryValueSleepAnalysis.awake.rawValue:
                     awake += minutes
                 case HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue:
-                    total += minutes
+                    unspecified += minutes
                 default:
                     break
                 }
-                if #available(iOS 16.0, *) {
-                } else {
-                    if sample.value == HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue {
-                        total += minutes
-                    }
-                }
             }
-            if #available(iOS 16.0, *) {
-                total = rem + deep + core
-            }
+            let total = rem + deep + core // Only sum REM, Deep, and Core for total sleep
             DispatchQueue.main.async {
-                self?.totalSleepMinutes = total
+                self?.totalSleepMinutes = mainSleepMinutes
+                self?.napSleepMinutes = napMinutes
                 self?.remSleepMinutes = rem
                 self?.deepSleepMinutes = deep
                 self?.coreSleepMinutes = core
                 self?.awakeMinutes = awake
-                print("Sleep: total=\(total) min, rem=\(rem), deep=\(deep), core=\(core), awake=\(awake)")
+                print("Main Sleep: \(mainSleepMinutes) min, Nap: \(napMinutes) min, total=\(total) min, rem=\(rem), deep=\(deep), core=\(core), awake=\(awake), unspecified=\(unspecified)")
             }
         }
         healthStore.execute(query)
