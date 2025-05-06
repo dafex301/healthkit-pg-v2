@@ -3,9 +3,12 @@ import SwiftUI
 /// A gamified SwiftUI view displaying the Tamagotchi avatar, progress, and state.
 struct TamagotchiWidget: View {
     let snapshot: HealthSnapshot
+    @Binding var selectedDate: Date
     @State private var previousSeverity: Int? = nil
     @State private var avatarScale: CGFloat = 1.0
     @State private var didDowngrade: Bool = false
+    @State private var showDatePicker: Bool = false
+    @State private var avatarShake: CGFloat = 0
     
     private var state: TamagotchiState { evaluate(snapshot) }
     private var gradient: LinearGradient { Color.stateGradient(for: state.severityRank) }
@@ -26,18 +29,19 @@ struct TamagotchiWidget: View {
             gradient
                 .edgesIgnoringSafeArea(.all)
             VStack(spacing: 24) {
-                // HStack {
-                //     Text("Tamagotchi")
-                //         .font(.system(size: 40, weight: .black, design: .rounded))
-                //         .foregroundStyle(.white)
-                //     Spacer()
-                //     Button(action: { /* settings action */ }) {
-                //         Image(systemName: "gearshape.fill")
-                //             .font(.title2)
-                //             .foregroundStyle(.white.opacity(0.7))
-                //     }
-                // }
-                // .padding(.horizontal)
+                HStack {
+                    Text("Tamagotchi")
+                        .font(.system(size: 40, weight: .black, design: .rounded))
+                        .foregroundStyle(.white)
+                    Spacer()
+                    Button(action: { showDatePicker = true }) {
+                        Image(systemName: "calendar")
+                            .font(.title2)
+                            .foregroundStyle(.white.opacity(0.85))
+                    }
+                    .accessibilityLabel("Select Date")
+                }
+                .padding(.horizontal)
                 ZStack {
                     Circle()
                         .stroke(gradient, lineWidth: 12)
@@ -49,15 +53,30 @@ struct TamagotchiWidget: View {
                         .scaledToFit()
                         .frame(width: 180)
                         .scaleEffect(avatarScale)
+                        .offset(x: avatarShake)
                         .animation(.spring(response: 0.35), value: avatarScale)
+                        .animation(.spring(response: 0.25), value: avatarShake)
+                        .onTapGesture {
+                            withAnimation(.spring(response: 0.18, dampingFraction: 0.2)) {
+                                avatarShake = -18
+                                avatarScale = 1.12
+                            }
+                            HapticManager.impact(.heavy)
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.09) {
+                                withAnimation(.spring(response: 0.18, dampingFraction: 0.2)) { avatarShake = 18 }
+                            }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+                                withAnimation(.spring(response: 0.18, dampingFraction: 0.2)) {
+                                    avatarShake = 0; avatarScale = 1.0
+                                }
+                            }
+                        }
                         .onChange(of: state.severityRank) { old, new in
                             if let prev = previousSeverity {
                                 if new < prev {
-                                    // Health improved
                                     avatarScale = 1.15
                                     HapticManager.success()
                                 } else if new > prev {
-                                    // Health downgraded
                                     avatarScale = 0.92
                                     didDowngrade = true
                                     HapticManager.warning()
@@ -81,13 +100,20 @@ struct TamagotchiWidget: View {
                         }
                     }
                 Spacer(minLength: 0)
-                // DatePicker bar
-                HStack {
-                    Spacer()
-                    // DatePicker is handled in parent view
-                }
             }
             .padding(.top, 8)
+        }
+        .sheet(isPresented: $showDatePicker) {
+            VStack {
+                DatePicker("Select Date", selection: $selectedDate, displayedComponents: .date)
+                    .datePickerStyle(.graphical)
+                    .labelsHidden()
+                    .padding()
+                Button("Done") { showDatePicker = false }
+                    .font(.headline)
+                    .padding(.bottom)
+            }
+            .presentationDetents([.medium, .large])
         }
     }
 }

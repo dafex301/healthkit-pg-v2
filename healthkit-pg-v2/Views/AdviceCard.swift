@@ -7,35 +7,57 @@ struct AdviceCard: View {
     @State private var wiggle: CGFloat = 0
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(spacing: 12) {
+            // State Description Card
             HStack(spacing: 8) {
                 Text(state.leadEmoji)
                     .font(.largeTitle)
                 Text(state.gamifiedDescription)
                     .font(.headline.weight(.bold))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .lineLimit(nil)
                     .accessibilityHint("Status summary")
             }
-            .padding(.bottom, 2)
-            Text("💡 " + state.tip)
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.yellow)
-                .lineLimit(2)
-            HStack(spacing: 4) {
+            .padding(16)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(.thinMaterial)
+                    .shadow(color: .black.opacity(0.10), radius: 6, x: 0, y: 2)
+            )
+            .offset(x: wiggle)
+            // Tip Card
+            HStack(alignment: .top, spacing: 8) {
+                Text("💡")
+                    .font(.title2)
+                Text(state.tip)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.yellow)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .lineLimit(nil)
+            }
+            .padding(14)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color.yellow.opacity(0.12))
+            )
+            // Goal Card
+            HStack(alignment: .top, spacing: 8) {
                 Image(systemName: "target")
                     .foregroundStyle(.blue)
+                    .font(.title3)
                 Text(state.targetText)
                     .font(.subheadline)
                     .foregroundStyle(.blue)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .lineLimit(nil)
             }
+            .padding(14)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color.blue.opacity(0.10))
+            )
         }
-        .padding(18)
-        .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(.thinMaterial)
-                .shadow(color: .black.opacity(0.12), radius: 8, x: 0, y: 4)
-                .innerShadow(radius: 6)
-        )
-        .offset(x: wiggle)
+        .padding(.horizontal, 2)
         .onChange(of: didDowngrade) { _, newValue in
             if newValue {
                 withAnimation(.spring(response: 0.15, dampingFraction: 0.2)) {
@@ -49,18 +71,6 @@ struct AdviceCard: View {
                 }
             }
         }
-    }
-}
-
-private extension View {
-    func innerShadow(radius: CGFloat) -> some View {
-        self.overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(Color.black.opacity(0.08), lineWidth: radius)
-                .blur(radius: radius)
-                .offset(x: 0, y: 2)
-                .mask(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        )
     }
 }
 

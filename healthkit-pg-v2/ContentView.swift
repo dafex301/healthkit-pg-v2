@@ -14,7 +14,7 @@ struct ContentView: View {
             NavigationView {
                 VStack {
                     if let snapshot = currentSnapshot {
-                        TamagotchiWidget(snapshot: snapshot)
+                        TamagotchiWidget(snapshot: snapshot, selectedDate: $selectedDate)
                     } else if isLoadingSnapshot {
                         ProgressView("Loading your Tamagotchi...")
                             .padding(.top, 40)
@@ -23,9 +23,6 @@ struct ContentView: View {
                             .foregroundStyle(.secondary)
                             .padding(.top, 40)
                     }
-                    DatePicker("Select Date", selection: $selectedDate, displayedComponents: .date)
-                        .datePickerStyle(.compact)
-                        .padding([.top, .horizontal])
                     Spacer()
                 }
                 .navigationTitle("Tamagotchi")
