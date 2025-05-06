@@ -1,0 +1,34 @@
+//
+//  ColorExtensions.swift
+//  healthkit-pg-v2
+//
+//  Created by Claude on 06/05/25.
+//
+
+import SwiftUI
+
+extension Color {
+    /// Returns a gradient based on the severity rank of the Tamagotchi state
+    static func stateGradient(for severityRank: Int) -> LinearGradient {
+        switch severityRank {
+        case 0: // knockedOutSleepy - lowest, worst state
+            return LinearGradient(colors: [.red, .orange], startPoint: .topLeading, endPoint: .bottomTrailing)
+        case 1: // groggySloth
+            return LinearGradient(colors: [.orange, .yellow], startPoint: .topLeading, endPoint: .bottomTrailing)
+        case 2: // lazyButRestedPanda
+            return LinearGradient(colors: [.yellow, .green.opacity(0.7)], startPoint: .topLeading, endPoint: .bottomTrailing)
+        case 3: // wiredStressedChinchilla
+            return LinearGradient(colors: [.purple, .pink], startPoint: .topLeading, endPoint: .bottomTrailing)
+        case 4: // balancedKoala
+            return LinearGradient(colors: [.green, .mint], startPoint: .topLeading, endPoint: .bottomTrailing)
+        case 5: // energizedRedPanda
+            return LinearGradient(colors: [.blue, .cyan], startPoint: .topLeading, endPoint: .bottomTrailing)
+        case 6: // overtrainedHusky
+            return LinearGradient(colors: [.purple, .indigo], startPoint: .topLeading, endPoint: .bottomTrailing)
+        case 7: // zenNinjaFox - highest, best state
+            return LinearGradient(colors: [.indigo, .purple.opacity(0.7)], startPoint: .topLeading, endPoint: .bottomTrailing)
+        default:
+            return LinearGradient(colors: [.gray, .gray.opacity(0.7)], startPoint: .topLeading, endPoint: .bottomTrailing)
+        }
+    }
+}
