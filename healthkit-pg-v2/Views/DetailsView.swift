@@ -12,6 +12,14 @@ struct DetailsView: View {
     @ObservedObject var healthManager: HealthKitManager
     @Binding var selectedDate: Date
     
+    // State variables for new weight entry
+    @State private var showingWeightSheet = false
+    @State private var newWeight = ""
+    @State private var weightDate = Date()
+    @State private var weightEndDate = Date()
+    @State private var showWeightSavedAlert = false
+    @State private var showingConfirmation = false
+    
     var body: some View {
         VStack {
             DatePicker("Select Date", selection: $selectedDate, displayedComponents: .date)
@@ -49,13 +57,129 @@ struct DetailsView: View {
                     Button("Refresh Data") {
                         healthManager.fetchAllHealthData()
                     }
-                    Button("Save New Weight: 70kg") {
-                        healthManager.saveNewWeight(weight: 70.0)
+                    
+                    Button("Add New Weight Entry") {
+                        // Initialize with current weight
+                        newWeight = String(format: "%.1f", healthManager.weight)
+                        weightDate = Date()
+                        weightEndDate = Date()
+                        showingWeightSheet = true
                     }
                 }
             }
         }
         .navigationTitle("Stats & Details")
+        .sheet(isPresented: $showingWeightSheet) {
+            weightEntrySheet
+        }
+        .alert("Weight Saved", isPresented: $showWeightSavedAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("Your new weight entry has been saved successfully.")
+        }
+    }
+    
+    // Weight entry sheet
+    private var weightEntrySheet: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Enter New Weight")) {
+                    // Weight input field with kg suffix
+                    HStack {
+                        TextField("Weight", text: $newWeight)
+                            .keyboardType(.decimalPad)
+                            .font(.system(size: 22, weight: .medium))
+                        Text("kg")
+                            .foregroundColor(.secondary)
+                            .font(.system(size: 22))
+                    }
+                    .padding(.vertical, 8)
+                    
+                    // Date picker for the weight entry (start)
+                    DatePicker("Start Date", selection: $weightDate, displayedComponents: [.date, .hourAndMinute])
+                        .datePickerStyle(.compact)
+                        .padding(.vertical, 8)
+                    // Date picker for the weight entry (end)
+                    DatePicker("End Date", selection: $weightEndDate, displayedComponents: [.date, .hourAndMinute])
+                        .datePickerStyle(.compact)
+                        .padding(.vertical, 8)
+                }
+                
+                Section(header: Text("Recent Averages")) {
+                    HStack {
+                        Text("Current Weight")
+                        Spacer()
+                        Text(String(format: "%.1f kg", healthManager.weight))
+                            .foregroundColor(.blue)
+                            .fontWeight(.medium)
+                    }
+                }
+                
+                Section {
+                    // Some helpful information about weight tracking
+                    Text("Regular weight tracking can help you monitor your progress toward fitness and health goals.")
+                        .font(.footnote)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .navigationTitle("Add Weight Entry")
+            .navigationBarItems(
+                leading: Button("Cancel") {
+                    showingWeightSheet = false
+                },
+                trailing: Button("Save") {
+                    if isValidWeight(newWeight) {
+                        saveWeight()
+                    }
+                }
+                .font(.headline)
+                .foregroundColor(.blue)
+                .disabled(newWeight.isEmpty || !isValidWeight(newWeight))
+            )
+            .toolbar {
+                ToolbarItem(placement: .keyboard) {
+                    Spacer()
+                    
+                    Button("Done") {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    }
+                    .font(.headline)
+                    .foregroundColor(.blue)
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+    
+    // Save weight to HealthKit
+    private func saveWeight() {
+        guard let weightValue = Double(newWeight.replacingOccurrences(of: ",", with: ".")) else {
+            return
+        }
+        
+        // Save the weight with the selected start and end date
+        healthManager.saveNewWeight(weight: weightValue, startDate: weightDate, endDate: weightEndDate)
+        
+        showingWeightSheet = false
+        showWeightSavedAlert = true
+        
+        // Refresh the data after saving
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            healthManager.fetchAllHealthData()
+        }
+    }
+    
+    // Validate that the weight input is a valid number
+    private func isValidWeight(_ weightStr: String) -> Bool {
+        let formattedStr = weightStr.replacingOccurrences(of: ",", with: ".")
+        
+        // Check if it's a valid number
+        guard let weightValue = Double(formattedStr) else {
+            return false
+        }
+        
+        // Valid weight range (e.g., 20kg to 300kg)
+        return weightValue >= 20 && weightValue <= 300
     }
 }
 

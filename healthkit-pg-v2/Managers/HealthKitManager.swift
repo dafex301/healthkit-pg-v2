@@ -285,24 +285,27 @@ class HealthKitManager: ObservableObject {
     
     // MARK: - Writing Data to HealthKit
     
-    func saveNewWeight(weight: Double) {
+    func saveNewWeight(weight: Double, date: Date = Date()) {
+        saveNewWeight(weight: weight, startDate: date, endDate: date)
+    }
+    
+    func saveNewWeight(weight: Double, startDate: Date, endDate: Date) {
         guard let weightType = HKQuantityType.quantityType(forIdentifier: .bodyMass) else { return }
         
         // Create a weight quantity
         let weightUnit = HKUnit.gramUnit(with: .kilo)
         let weightQuantity = HKQuantity(unit: weightUnit, doubleValue: weight)
         
-        // Create a weight sample
-        let now = Date()
+        // Create a weight sample with the specified start and end date
         let weightSample = HKQuantitySample(type: weightType,
                                            quantity: weightQuantity,
-                                           start: now,
-                                           end: now)
+                                           start: startDate,
+                                           end: endDate)
         
         // Save the weight sample to HealthKit
         healthStore.save(weightSample) { [weak self] (success, error) in
             if success {
-                print("Successfully saved weight of \(weight) kg")
+                print("Successfully saved weight of \(weight) kg at start \(startDate) end \(endDate)")
                 
                 // Update the UI
                 DispatchQueue.main.async {
