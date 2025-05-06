@@ -3,7 +3,12 @@ import SwiftUI
 /// A gamified SwiftUI view displaying the Tamagotchi avatar, progress, and state.
 struct TamagotchiWidget: View {
     let snapshot: HealthSnapshot
+    @State private var previousSeverity: Int? = nil
+    @State private var avatarScale: CGFloat = 1.0
+    @State private var didDowngrade: Bool = false
+    
     private var state: TamagotchiState { evaluate(snapshot) }
+    private var gradient: LinearGradient { Color.stateGradient(for: state.severityRank) }
     
     // Progress calculations
     private var stepProgress: Double { min(Double(snapshot.steps) / 10000, 1.0) }
@@ -18,83 +23,71 @@ struct TamagotchiWidget: View {
     
     var body: some View {
         ZStack {
-            // Dynamic background
-            LinearGradient(gradient: Gradient(colors: backgroundColors(for: state)), startPoint: .top, endPoint: .bottom)
-                .ignoresSafeArea()
-                .animation(.easeInOut, value: state)
-            VStack(spacing: 16) {
-                // Avatar with animation
-                Image(state.assetName)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(height: 120)
-                    .accessibilityLabel(Text(state.accessibilityDescription))
-                    .shadow(radius: 12)
-                    .scaleEffect(state == .energizedRedPanda ? 1.1 : 1.0)
-                    .rotationEffect(.degrees(state == .wiredStressedChinchilla ? 5 : 0))
-                    .animation(.spring(response: 0.5, dampingFraction: 0.5), value: state)
-                // Progress bars
-                VStack(spacing: 10) {
-                    ProgressBar(title: "Steps", value: Double(snapshot.steps), goal: 10000, icon: "figure.walk", color: .green, progress: stepProgress)
-                    ProgressBar(title: "Sleep", value: snapshot.totalSleep, goal: 8, icon: "bed.double.fill", color: .blue, progress: sleepProgress, valueFormat: "%.1f h")
-                    ProgressBar(title: "Energy", value: snapshot.activeEnergyKcal, goal: 500, icon: "flame.fill", color: .orange, progress: energyProgress, valueFormat: "%.0f kcal")
+            gradient
+                .edgesIgnoringSafeArea(.all)
+            VStack(spacing: 24) {
+                // HStack {
+                //     Text("Tamagotchi")
+                //         .font(.system(size: 40, weight: .black, design: .rounded))
+                //         .foregroundStyle(.white)
+                //     Spacer()
+                //     Button(action: { /* settings action */ }) {
+                //         Image(systemName: "gearshape.fill")
+                //             .font(.title2)
+                //             .foregroundStyle(.white.opacity(0.7))
+                //     }
+                // }
+                // .padding(.horizontal)
+                ZStack {
+                    Circle()
+                        .stroke(gradient, lineWidth: 12)
+                        .frame(width: 220)
+                        .blur(radius: 4)
+                        .opacity(0.35)
+                    Image(state.assetName)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 180)
+                        .scaleEffect(avatarScale)
+                        .animation(.spring(response: 0.35), value: avatarScale)
+                        .onChange(of: state.severityRank) { old, new in
+                            if let prev = previousSeverity {
+                                if new < prev {
+                                    // Health improved
+                                    avatarScale = 1.15
+                                    HapticManager.success()
+                                } else if new > prev {
+                                    // Health downgraded
+                                    avatarScale = 0.92
+                                    didDowngrade = true
+                                    HapticManager.warning()
+                                }
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.32) {
+                                    avatarScale = 1.0
+                                }
+                            }
+                            previousSeverity = new
+                        }
+                        .accessibilityLabel(Text(state.accessibilityDescription))
                 }
-                .padding(.horizontal)
-                // Streaks & Badges
-                HStack(spacing: 16) {
-                    if fakeStreak > 0 {
-                        Label("Streak: \(fakeStreak) days", systemImage: "flame.fill")
-                            .font(.caption)
-                            .foregroundStyle(.red)
-                            .padding(6)
-                            .background(Capsule().fill(Color(.systemGray6)))
+                StatGrid(snapshot: snapshot, state: state, gradient: gradient)
+                AdviceCard(state: state, didDowngrade: didDowngrade)
+                    .padding(.horizontal)
+                    .onChange(of: didDowngrade) { _, _ in
+                        if didDowngrade {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                didDowngrade = false
+                            }
+                        }
                     }
-                    if has10kStepsBadge {
-                        BadgeView(label: "10k Steps", systemImage: "shoeprints.fill", color: .green)
-                    }
-                    if hasSleepBadge {
-                        BadgeView(label: "8h Sleep", systemImage: "moon.zzz.fill", color: .blue)
-                    }
-                    if hasEnergyBadge {
-                        BadgeView(label: "500 kcal", systemImage: "bolt.fill", color: .orange)
-                    }
+                Spacer(minLength: 0)
+                // DatePicker bar
+                HStack {
+                    Spacer()
+                    // DatePicker is handled in parent view
                 }
-                .padding(.bottom, 2)
-                // Gamified description, tip, and target
-                VStack(spacing: 4) {
-                    Text(state.gamifiedDescription)
-                        .font(.title3.bold())
-                        .multilineTextAlignment(.center)
-                        .foregroundStyle(.primary)
-                    Label(state.tip, systemImage: "lightbulb.fill")
-                        .font(.subheadline)
-                        .foregroundStyle(.yellow)
-                    Label(state.targetText, systemImage: "target")
-                        .font(.footnote)
-                        .foregroundStyle(.blue)
-                }
-                .padding(.horizontal)
-                .padding(.bottom, 4)
-                .background(
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color(.systemGray6).opacity(0.85))
-                        .shadow(radius: 2)
-                )
             }
             .padding(.top, 8)
-        }
-    }
-    
-    private func backgroundColors(for state: TamagotchiState) -> [Color] {
-        switch state {
-        case .knockedOutSleepy: return [Color.gray.opacity(0.7), .black]
-        case .groggySloth: return [Color(.systemTeal), Color(.systemGray4)]
-        case .lazyButRestedPanda: return [Color(.systemGreen), Color(.systemGray5)]
-        case .wiredStressedChinchilla: return [Color.yellow, Color.orange]
-        case .balancedKoala: return [Color(.systemBlue), Color(.systemGreen)]
-        case .energizedRedPanda: return [Color.red, Color.orange]
-        case .overtrainedHusky: return [Color(.systemIndigo), Color(.systemGray)]
-        case .zenNinjaFox: return [Color.purple, Color(.systemTeal)]
         }
     }
 }
