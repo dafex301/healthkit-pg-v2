@@ -8,25 +8,8 @@ struct AdviceCard: View {
     
     var body: some View {
         VStack(spacing: 12) {
-            // State Description Card
-            HStack(spacing: 8) {
-                Text(state.leadEmoji)
-                    .font(.largeTitle)
-                Text(state.gamifiedDescription)
-                    .font(.headline.weight(.bold))
-                    .fixedSize(horizontal: false, vertical: true)
-                    .lineLimit(nil)
-                    .accessibilityHint("Status summary")
-            }
-            .padding(16)
-            .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(.thinMaterial)
-                    .shadow(color: .black.opacity(0.10), radius: 6, x: 0, y: 2)
-            )
-            .offset(x: wiggle)
             // Tip Card
-            HStack(alignment: .top, spacing: 8) {
+            HStack(alignment: .center, spacing: 8) {
                 Text("💡")
                     .font(.title2)
                 Text(state.tip)
@@ -34,30 +17,16 @@ struct AdviceCard: View {
                     .foregroundStyle(.yellow)
                     .fixedSize(horizontal: false, vertical: true)
                     .lineLimit(nil)
+                Spacer()
             }
-            .padding(14)
+            .padding(16) // Changed from 14 to 16 to match the state card
+            .frame(maxWidth: .infinity)
             .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color.yellow.opacity(0.12))
-            )
-            // Goal Card
-            HStack(alignment: .top, spacing: 8) {
-                Image(systemName: "target")
-                    .foregroundStyle(.blue)
-                    .font(.title3)
-                Text(state.targetText)
-                    .font(.subheadline)
-                    .foregroundStyle(.blue)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .lineLimit(nil)
-            }
-            .padding(14)
-            .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color.blue.opacity(0.10))
+                RoundedRectangle(cornerRadius: 16, style: .continuous) // Changed from 14 to 16
+                    .fill(Color.yellow.opacity(0.3))
             )
         }
-        .padding(.horizontal, 2)
+        .padding(16) // Added consistent outer padding instead of just horizontal
         .onChange(of: didDowngrade) { _, newValue in
             if newValue {
                 withAnimation(.spring(response: 0.15, dampingFraction: 0.2)) {
@@ -84,7 +53,7 @@ extension TamagotchiState {
         case .balancedKoala: return "🧘‍♂️"
         case .energizedRedPanda: return "🎉"
         case .overtrainedHusky: return "🥵"
-        case .zenNinjaFox: return "��"
+        case .zenNinjaFox: return "🦊"
         }
     }
-} 
+}

@@ -11,6 +11,7 @@ struct GamifiedProgressBar: View {
     let accessibilityHint: String
     let showTrophy: Bool
     let animatePulse: Bool
+    let barColor: Color
     
     @State private var pulse: Bool = false
     
@@ -27,11 +28,11 @@ struct GamifiedProgressBar: View {
                     .foregroundStyle(.secondary)
                 ZStack(alignment: .leading) {
                     Capsule()
-                        .fill(Color(hex: 0x1C1C1E).opacity(0.6))
+                        .fill(Color.white.opacity(0.15))
                         .frame(height: 16)
                     GeometryReader { geo in
                         Capsule()
-                            .fill(gradient)
+                            .fill(barColor)
                             .frame(width: geo.size.width * percent, height: 16)
                             .scaleEffect(pulse ? 1.08 : 1.0)
                             .opacity(pulse ? 0.85 : 1.0)
@@ -51,8 +52,11 @@ struct GamifiedProgressBar: View {
                     }
                 }
             }
-            .frame(width: 140)
-            Spacer(minLength: 0)
+            
+            // Fixed spacer
+            Spacer().frame(width: 8)
+            
+            // Value display
             HStack(spacing: 2) {
                 Text(String(format: valueFormat, value))
                     .font(.callout.monospacedDigit().weight(.medium))
@@ -75,4 +79,4 @@ struct GamifiedProgressBar: View {
         .accessibilityValue("\(Int(percent * 100)) percent of goal")
         .accessibilityHint(accessibilityHint)
     }
-} 
+}

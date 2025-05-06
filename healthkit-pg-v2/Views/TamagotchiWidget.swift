@@ -9,6 +9,7 @@ struct TamagotchiWidget: View {
     @State private var didDowngrade: Bool = false
     @State private var showDatePicker: Bool = false
     @State private var avatarShake: CGFloat = 0
+    @State private var tempDate: Date = Calendar.current.startOfDay(for: Date())
     
     private var state: TamagotchiState { evaluate(snapshot) }
     private var gradient: LinearGradient { Color.stateGradient(for: state.severityRank) }
@@ -25,23 +26,29 @@ struct TamagotchiWidget: View {
     private var hasEnergyBadge: Bool { snapshot.activeEnergyKcal >= 500 }
     
     var body: some View {
-        ZStack {
-            gradient
-                .edgesIgnoringSafeArea(.all)
+        ZStack(alignment: .topLeading) {
+             gradient
+                .ignoresSafeArea(edges: .all)
             VStack(spacing: 24) {
-                HStack {
-                    Text("Tamagotchi")
-                        .font(.system(size: 40, weight: .black, design: .rounded))
-                        .foregroundStyle(.white)
-                    Spacer()
-                    Button(action: { showDatePicker = true }) {
-                        Image(systemName: "calendar")
-                            .font(.title2)
-                            .foregroundStyle(.white.opacity(0.85))
+                // No Tamagotchi text header
+                ZStack(alignment: .topLeading) {
+                    Color.clear.frame(height: 44) // Spacer for status bar
+                    HStack {
+                        Spacer()
+                        Button(action: { tempDate = selectedDate; showDatePicker = true }) {
+                            Image(systemName: "calendar")
+                                .font(.title2)
+                                .foregroundStyle(.white.opacity(0.85))
+                                .padding(12)
+                                .background(Color.black.opacity(0.001)) // hit area
+                                .clipShape(Circle())
+                        }
+                        .accessibilityLabel("Select Date")
+                        
                     }
-                    .accessibilityLabel("Select Date")
+                    .padding(.leading, 8)
+                    .padding(.top, 2)
                 }
-                .padding(.horizontal)
                 ZStack {
                     Circle()
                         .stroke(gradient, lineWidth: 12)
@@ -89,9 +96,13 @@ struct TamagotchiWidget: View {
                         }
                         .accessibilityLabel(Text(state.accessibilityDescription))
                 }
-                StatGrid(snapshot: snapshot, state: state, gradient: gradient)
-                AdviceCard(state: state, didDowngrade: didDowngrade)
+                DescriptionCard(state: state, didDowngrade: didDowngrade)
                     .padding(.horizontal)
+                StatGrid(snapshot: snapshot, state: state, gradient: gradient)
+                    .padding(.horizontal)
+                AdviceCard(state: state, didDowngrade: didDowngrade)
+//                    .frame(maxWidth: .infinity)
+//                    .padding(.horizontal)
                     .onChange(of: didDowngrade) { _, _ in
                         if didDowngrade {
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
@@ -105,13 +116,16 @@ struct TamagotchiWidget: View {
         }
         .sheet(isPresented: $showDatePicker) {
             VStack {
-                DatePicker("Select Date", selection: $selectedDate, displayedComponents: .date)
+                DatePicker("Select Date", selection: $tempDate, displayedComponents: .date)
                     .datePickerStyle(.graphical)
                     .labelsHidden()
                     .padding()
-                Button("Done") { showDatePicker = false }
-                    .font(.headline)
-                    .padding(.bottom)
+                Button("Done") {
+                    selectedDate = tempDate
+                    showDatePicker = false
+                }
+                .font(.headline)
+                .padding(.bottom)
             }
             .presentationDetents([.medium, .large])
         }
@@ -163,4 +177,4 @@ struct BadgeView: View {
             .background(Capsule().fill(color.opacity(0.15)))
             .foregroundStyle(color)
     }
-} 
+}

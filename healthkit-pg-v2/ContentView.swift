@@ -25,7 +25,7 @@ struct ContentView: View {
                     }
                     Spacer()
                 }
-                .navigationTitle("Tamagotchi")
+//                .navigationTitle("Tamagotchi")
             }
             .tabItem {
                 Label("Tamagotchi", systemImage: "gamecontroller.fill")
@@ -109,3 +109,11 @@ struct ContentView: View {
         }
     }
 }
+
+#if DEBUG
+struct ContentView_Previews: PreviewProvider {
+    static var previews: some View {
+        ContentView()
+    }
+}
+#endif
