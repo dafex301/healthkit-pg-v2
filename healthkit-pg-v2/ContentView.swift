@@ -9,6 +9,7 @@ struct ContentView: View {
     var body: some View {
         NavigationView {
             VStack {
+                TamagotchiWidget()
                 DatePicker("Select Date", selection: $selectedDate, displayedComponents: .date)
                     .datePickerStyle(.compact)
                     .padding([.top, .horizontal])

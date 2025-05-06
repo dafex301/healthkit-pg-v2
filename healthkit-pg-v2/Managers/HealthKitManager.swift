@@ -7,6 +7,7 @@
 // Managers/HealthKitManager.swift
 import HealthKit
 import SwiftUI
+import Combine
 
 class HealthKitManager: ObservableObject {
     private let healthStore = HKHealthStore()
@@ -27,6 +28,9 @@ class HealthKitManager: ObservableObject {
     @Published var coreSleepMinutes: Double = 0
     @Published var awakeMinutes: Double = 0
     @Published var napSleepMinutes: Double = 0
+    
+    /// Publishes new HealthSnapshot values when available.
+    public let snapshotPublisher = PassthroughSubject<HealthSnapshot, Never>()
     
     init() {
         if HKHealthStore.isHealthDataAvailable() {
@@ -432,5 +436,94 @@ class HealthKitManager: ObservableObject {
     
     func queryWorkouts() {
         queryWorkouts(for: Date())
+    }
+    
+    /// Fetches a HealthSnapshot for today, asynchronously.
+    /// - Returns: A HealthSnapshot with today's metrics.
+    func fetchTodaySnapshot() async throws -> HealthSnapshot {
+        // Helper to run HK queries synchronously
+        func fetch<T>(_ block: (@escaping (T) -> Void) -> Void) async -> T? {
+            await withCheckedContinuation { continuation in
+                block { value in
+                    continuation.resume(returning: value)
+                }
+            }
+        }
+        let today = Date()
+        let startOfDay = Calendar.current.startOfDay(for: today)
+        let endOfDay = Calendar.current.date(byAdding: .day, value: 1, to: startOfDay) ?? today
+        // Step Count
+        let steps: Int = await fetch { completion in
+            guard let stepCountType = HKQuantityType.quantityType(forIdentifier: .stepCount) else { completion(0); return }
+            let predicate = HKQuery.predicateForSamples(withStart: startOfDay, end: endOfDay, options: .strictStartDate)
+            let query = HKStatisticsQuery(quantityType: stepCountType, quantitySamplePredicate: predicate, options: .cumulativeSum) { _, result, _ in
+                let value = result?.sumQuantity()?.doubleValue(for: HKUnit.count()) ?? 0
+                completion(Int(value))
+            }
+            self.healthStore.execute(query)
+        } ?? 0
+        // Distance (km)
+        let distanceKm: Double = await fetch { completion in
+            guard let distanceType = HKQuantityType.quantityType(forIdentifier: .distanceWalkingRunning) else { completion(0); return }
+            let predicate = HKQuery.predicateForSamples(withStart: startOfDay, end: endOfDay, options: .strictStartDate)
+            let query = HKStatisticsQuery(quantityType: distanceType, quantitySamplePredicate: predicate, options: .cumulativeSum) { _, result, _ in
+                let value = result?.sumQuantity()?.doubleValue(for: HKUnit.meter()) ?? 0
+                completion(value / 1000)
+            }
+            self.healthStore.execute(query)
+        } ?? 0
+        // Active Energy (kcal)
+        let activeEnergyKcal: Double = await fetch { completion in
+            guard let activeEnergyType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned) else { completion(0); return }
+            let predicate = HKQuery.predicateForSamples(withStart: startOfDay, end: endOfDay, options: .strictStartDate)
+            let query = HKStatisticsQuery(quantityType: activeEnergyType, quantitySamplePredicate: predicate, options: .cumulativeSum) { _, result, _ in
+                let value = result?.sumQuantity()?.doubleValue(for: HKUnit.kilocalorie()) ?? 0
+                completion(value)
+            }
+            self.healthStore.execute(query)
+        } ?? 0
+        // Sleep (total, deep)
+        let (totalSleep, deepSleep): (Double, Double) = await fetch { completion in
+            guard let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) else { completion((0,0)); return }
+            let calendar = Calendar.current
+            let startOfMainSleep = calendar.date(bySettingHour: 18, minute: 0, second: 0, of: calendar.date(byAdding: .day, value: -1, to: today)!)!
+            let endOfMainSleep = calendar.date(bySettingHour: 10, minute: 0, second: 0, of: today)!
+            let predicate = HKQuery.predicateForSamples(withStart: startOfMainSleep, end: endOfMainSleep, options: .strictStartDate)
+            let query = HKSampleQuery(sampleType: sleepType, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, _ in
+                var total: Double = 0
+                var deep: Double = 0
+                if let samples = samples as? [HKCategorySample] {
+                    for sample in samples {
+                        let minutes = sample.endDate.timeIntervalSince(sample.startDate) / 60
+                        if sample.value == HKCategoryValueSleepAnalysis.asleepREM.rawValue || sample.value == HKCategoryValueSleepAnalysis.asleepDeep.rawValue || sample.value == HKCategoryValueSleepAnalysis.asleepCore.rawValue {
+                            total += minutes
+                        }
+                        if sample.value == HKCategoryValueSleepAnalysis.asleepDeep.rawValue {
+                            deep += minutes
+                        }
+                    }
+                }
+                completion((total / 60, deep / 60)) // hours
+            }
+            self.healthStore.execute(query)
+        } ?? (0,0)
+        // Resting HR (use lowest HR sample for today as a proxy)
+        let restingHR: Double = await fetch { completion in
+            guard let heartRateType = HKQuantityType.quantityType(forIdentifier: .heartRate) else { completion(0); return }
+            let predicate = HKQuery.predicateForSamples(withStart: startOfDay, end: endOfDay, options: .strictStartDate)
+            let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: true)
+            let query = HKSampleQuery(sampleType: heartRateType, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: [sortDescriptor]) { _, samples, _ in
+                if let samples = samples as? [HKQuantitySample], let minSample = samples.min(by: { $0.quantity.doubleValue(for: HKUnit.count().unitDivided(by: HKUnit.minute())) < $1.quantity.doubleValue(for: HKUnit.count().unitDivided(by: HKUnit.minute())) }) {
+                    let hr = minSample.quantity.doubleValue(for: HKUnit.count().unitDivided(by: HKUnit.minute()))
+                    completion(hr)
+                } else {
+                    completion(0)
+                }
+            }
+            self.healthStore.execute(query)
+        } ?? 0
+        let snapshot = HealthSnapshot(totalSleep: totalSleep, deepSleep: deepSleep, steps: steps, distanceKm: distanceKm, activeEnergyKcal: activeEnergyKcal, restingHR: restingHR)
+        snapshotPublisher.send(snapshot)
+        return snapshot
     }
 }
