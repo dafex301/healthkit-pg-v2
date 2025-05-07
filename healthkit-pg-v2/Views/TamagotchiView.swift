@@ -26,7 +26,7 @@ struct TamagotchiView: View {
                     .foregroundStyle(.secondary)
                     .padding(.top, 40)
             }
-            Spacer()
+//            Spacer()
         }
     }
 }

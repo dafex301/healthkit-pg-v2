@@ -33,8 +33,8 @@ struct ContentView: View {
         }
         // Set the active tab item color to white
         .accentColor(.white)
+        .environment(\.colorScheme, .dark)
         // Apply our custom tab bar appearance
-//        .customTabBarAppearance()
         .onAppear {
             healthManager.requestAuthorization()
             loadSnapshot(for: selectedDate)
