@@ -215,7 +215,7 @@ struct TamagotchiStatesInfoSheet: View {
                 }
                 .padding(.vertical, 8)
             }
-            .navigationTitle("Tamagotchi States")
+            .navigationTitle("States")
             .navigationBarTitleDisplayMode(.inline)
         }
     }
