@@ -57,7 +57,7 @@ enum TamagotchiState: String, CaseIterable, Codable, Identifiable {
     var gamifiedDescription: String {
         switch self {
         case .knockedOutSleepy:
-            return "Eyes half-closed, head bobbing. Your Tamagotchi is running on empty!"
+            return "Eyes half-closed, head bobbing. You are running on empty!"
         case .groggySloth:
             return "Slouching with a tiny zzz bubble. Feeling sluggish from too little sleep and too few steps."
         case .lazyButRestedPanda:
@@ -65,13 +65,13 @@ enum TamagotchiState: String, CaseIterable, Codable, Identifiable {
         case .wiredStressedChinchilla:
             return "Darting eyes, jittery shake. High heart rate, low movement – stress detected!"
         case .balancedKoala:
-            return "Soft smile, gentle breathing. A balanced day for your Tamagotchi!"
+            return "Soft smile, gentle breathing. A balanced day for you!"
         case .energizedRedPanda:
             return "Big grin, bouncing in place! Energy and activity maxed out – celebration time!"
         case .overtrainedHusky:
             return "Panting, sweat drops, sluggish tail. Overdoing it without enough rest."
         case .zenNinjaFox:
-            return "Calm, floating lotus pose. Peak readiness! Your Tamagotchi is in zen mode."
+            return "Calm, floating lotus pose. Peak readiness! You are in zen mode."
         }
     }
 
