@@ -15,6 +15,8 @@ struct GamifiedProgressBar: View {
     let isReversed: Bool
     
     @State private var pulse: Bool = false
+    @State private var animatedPercent: Double = 0
+    @State private var animatedValue: Double = 0
     
     var percent: Double {
         if isReversed {
@@ -41,7 +43,7 @@ struct GamifiedProgressBar: View {
                     GeometryReader { geo in
                         Capsule()
                             .fill(barColor)
-                            .frame(width: geo.size.width * percent, height: 16)
+                            .frame(width: geo.size.width * animatedPercent, height: 16)
                             .scaleEffect(pulse ? 1.08 : 1.0)
                             .opacity(pulse ? 0.85 : 1.0)
                             .animation(animatePulse ? .spring(response: 0.3, dampingFraction: 0.4) : .none, value: pulse)
@@ -50,7 +52,7 @@ struct GamifiedProgressBar: View {
                             }
                         HStack {
                             Spacer()
-                            Text("\(Int(percent * 100))%")
+                            Text("\(Int(animatedPercent * 100))%")
                                 .font(.caption2.monospacedDigit().weight(.medium))
                                 .foregroundStyle(.white.opacity(0.8))
                                 .padding(.trailing, 6)
@@ -61,23 +63,23 @@ struct GamifiedProgressBar: View {
                 }
             }
             
-            Spacer(minLength: 20)
+            Spacer(minLength: 5)
             
             // Value display
             HStack(spacing: 2) {
-                Text(String(format: valueFormat, value))
+                Text(String(format: valueFormat, animatedValue))
                     .multilineTextAlignment(.trailing)
                     .frame(maxWidth: 60, alignment: .trailing)
                     .font(.callout.monospacedDigit().weight(.medium))
                     .foregroundStyle(.white)
                     .minimumScaleFactor(0.7)
 //                    .lineLimit(1)
-                if showTrophy {
-                    Image(systemName: "trophy.fill")
-                        .foregroundStyle(.yellow)
-                        .transition(.scale)
-                        .animation(.spring(), value: showTrophy)
-                }
+//                if showTrophy {
+//                    Image(systemName: "trophy.fill")
+//                        .foregroundStyle(.yellow)
+//                        .transition(.scale)
+//                        .animation(.spring(), value: showTrophy)
+//                }
             }
 //            .frame(minWidth: 100)
 //            .background(.gray)
@@ -85,7 +87,25 @@ struct GamifiedProgressBar: View {
         .padding(.horizontal, 4)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
-        .accessibilityValue("\(Int(percent * 100)) percent of goal")
+        .accessibilityValue("\(Int(animatedPercent * 100)) percent of goal")
         .accessibilityHint(accessibilityHint)
+        .onAppear {
+            withAnimation(.easeOut(duration: 1.0)) {
+                animatedPercent = percent
+                animatedValue = value
+            }
+        }
+        .onChange(of: value) { _, newValue in
+            withAnimation(.easeOut(duration: 1.0)) {
+                animatedPercent = percent
+                animatedValue = newValue
+            }
+        }
+        .onChange(of: goal) { _, _ in
+            withAnimation(.easeOut(duration: 1.0)) {
+                animatedPercent = percent
+                animatedValue = value
+            }
+        }
     }
 }
