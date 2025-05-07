@@ -34,7 +34,6 @@ struct GamifiedProgressBar: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.secondary)
                 ZStack(alignment: .leading) {
                     Capsule()
                         .fill(Color.white.opacity(0.15))
@@ -62,18 +61,17 @@ struct GamifiedProgressBar: View {
                 }
             }
             
-            // Fixed spacer
-            Spacer().frame(width: 8)
+            Spacer(minLength: 20)
             
             // Value display
             HStack(spacing: 2) {
                 Text(String(format: valueFormat, value))
+                    .multilineTextAlignment(.trailing)
+                    .frame(maxWidth: 60, alignment: .trailing)
                     .font(.callout.monospacedDigit().weight(.medium))
                     .foregroundStyle(.white)
-                    .frame(minWidth: 40, alignment: .trailing)
                     .minimumScaleFactor(0.7)
-                    .lineLimit(1)
-                    .fixedSize()
+//                    .lineLimit(1)
                 if showTrophy {
                     Image(systemName: "trophy.fill")
                         .foregroundStyle(.yellow)
@@ -81,6 +79,8 @@ struct GamifiedProgressBar: View {
                         .animation(.spring(), value: showTrophy)
                 }
             }
+//            .frame(minWidth: 100)
+//            .background(.gray)
         }
         .padding(.horizontal, 4)
         .accessibilityElement(children: .combine)
