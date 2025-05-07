@@ -2,7 +2,7 @@
 //  DetailsView.swift
 //  healthkit-pg-v2
 //
-//  Created by Claude on 06/05/25.
+//  Created by Fahrel Gibran on 06/05/25.
 //
 
 import SwiftUI
