@@ -52,7 +52,8 @@ class HealthKitManager: ObservableObject {
             HKObjectType.quantityType(forIdentifier: .height)!,
             HKObjectType.characteristicType(forIdentifier: .biologicalSex)!,
             HKObjectType.characteristicType(forIdentifier: .dateOfBirth)!,
-            HKObjectType.workoutType()
+            HKObjectType.workoutType(),
+            HKObjectType.quantityType(forIdentifier: .restingHeartRate)!
         ]
         
         // Define the types of data we want to write to HealthKit
@@ -510,14 +511,14 @@ class HealthKitManager: ObservableObject {
             }
             self.healthStore.execute(query)
         } ?? (0,0)
-        // Resting HR (use lowest HR sample for the day as a proxy)
+        // Resting HR (use HealthKit's dedicated restingHeartRate type)
         let restingHR: Double = await fetch { completion in
-            guard let heartRateType = HKQuantityType.quantityType(forIdentifier: .heartRate) else { completion(0); return }
+            guard let restingHRType = HKQuantityType.quantityType(forIdentifier: .restingHeartRate) else { completion(0); return }
             let predicate = HKQuery.predicateForSamples(withStart: startOfDay, end: endOfDay, options: .strictStartDate)
-            let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: true)
-            let query = HKSampleQuery(sampleType: heartRateType, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: [sortDescriptor]) { _, samples, _ in
-                if let samples = samples as? [HKQuantitySample], let minSample = samples.min(by: { $0.quantity.doubleValue(for: HKUnit.count().unitDivided(by: HKUnit.minute())) < $1.quantity.doubleValue(for: HKUnit.count().unitDivided(by: HKUnit.minute())) }) {
-                    let hr = minSample.quantity.doubleValue(for: HKUnit.count().unitDivided(by: HKUnit.minute()))
+            let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
+            let query = HKSampleQuery(sampleType: restingHRType, predicate: predicate, limit: 1, sortDescriptors: [sortDescriptor]) { _, samples, _ in
+                if let samples = samples as? [HKQuantitySample], let mostRecent = samples.first {
+                    let hr = mostRecent.quantity.doubleValue(for: HKUnit.count().unitDivided(by: HKUnit.minute()))
                     completion(hr)
                 } else {
                     completion(0)

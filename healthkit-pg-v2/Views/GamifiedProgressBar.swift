@@ -12,10 +12,19 @@ struct GamifiedProgressBar: View {
     let showTrophy: Bool
     let animatePulse: Bool
     let barColor: Color
+    let isReversed: Bool
     
     @State private var pulse: Bool = false
     
-    var percent: Double { min(value / goal, 1.0) }
+    var percent: Double {
+        if isReversed {
+            let maxHRValue = 100.0
+            let clampedValue = min(max(value, goal), maxHRValue)
+            return max(0, min(1, (maxHRValue - clampedValue) / (maxHRValue - goal)))
+        } else {
+            return min(value / goal, 1.0)
+        }
+    }
     
     var body: some View {
         HStack(spacing: 8) {

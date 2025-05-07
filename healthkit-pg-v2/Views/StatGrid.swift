@@ -18,7 +18,8 @@ struct StatGrid: View {
                 accessibilityHint: "Daily step count progress",
                 showTrophy: snapshot.steps >= 10_000,
                 animatePulse: snapshot.steps >= 10_000,
-                barColor: .blue
+                barColor: .blue,
+                isReversed: false
             )
             GamifiedProgressBar(
                 icon: "bed.double.fill",
@@ -31,7 +32,8 @@ struct StatGrid: View {
                 accessibilityHint: "Total sleep hours progress",
                 showTrophy: snapshot.totalSleep >= 8.0,
                 animatePulse: snapshot.totalSleep >= 8.0,
-                barColor: .indigo
+                barColor: .indigo,
+                isReversed: false
             )
             GamifiedProgressBar(
                 icon: "flame.fill",
@@ -44,7 +46,8 @@ struct StatGrid: View {
                 accessibilityHint: "Active energy progress",
                 showTrophy: snapshot.activeEnergyKcal >= 500.0,
                 animatePulse: snapshot.activeEnergyKcal >= 500.0,
-                barColor: .orange
+                barColor: .orange,
+                isReversed: false
             )
             GamifiedProgressBar(
                 icon: "heart.fill",
@@ -57,7 +60,8 @@ struct StatGrid: View {
                 accessibilityHint: "Resting heart rate gauge",
                 showTrophy: snapshot.restingHR > 0 && snapshot.restingHR <= 60,
                 animatePulse: snapshot.restingHR > 0 && snapshot.restingHR <= 60,
-                barColor: .red
+                barColor: .red,
+                isReversed: true
             )
             // GamifiedProgressBar(
             //     icon: "figure.run.circle.fill",
