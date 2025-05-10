@@ -1,5 +1,5 @@
 ## TamagotchiWidget & HealthKit Integration
-![App Homepage](https://drive.google.com/uc?export=view&id=13Xyl0hY9lyLHYpvu_CV3T0gHhqUXqxj1)
+![App Screenshot](https://drive.google.com/uc?export=view&id=1mVdUDVqb4XaE1DsUxhP1NaSorHeWddA2)
 
 
 ### Permissions Steps
