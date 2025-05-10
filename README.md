@@ -1,4 +1,6 @@
 ## TamagotchiWidget & HealthKit Integration
+![App Homepage](https://drive.google.com/uc?export=view&id=13Xyl0hY9lyLHYpvu_CV3T0gHhqUXqxj1)
+
 
 ### Permissions Steps
 1. On first launch, the app will request HealthKit permissions. Grant access to all requested metrics (steps, sleep, heart rate, etc.).
